@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# MLflow
+mlruns/
+mlartifacts/
+
+# Data and model artifacts
+data/raw/*
+data/snapshots/*.pkl
+models/artifacts/*
+!data/raw/.gitkeep
+!data/snapshots/.gitkeep
+!models/artifacts/.gitkeep
+
+# SQLite databases
+*.db
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Redis dump
+dump.rdb
+
+# Node / Next.js
+dashboard/node_modules/
+dashboard/.next/
+dashboard/out/
+dashboard/.env.local
+
+# VSCode
+.vscode/settings.json
+
+# OS
+.DS_Store
+Thumbs.db
