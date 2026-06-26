@@ -1,0 +1,95 @@
+Phase-Wise Roadmap
+
+Phase 0 — Repo & Infra Setup
+
+Initialize GitHub repo, folder skeleton, .gitignore, .env.example
+Write requirements.txt and requirements-dev.txt
+Write infra/kafka_setup.sh to download and start Kafka + ZooKeeper locally
+Write infra/redis_setup.sh to install and start Redis locally
+Write infra/start_all.sh to launch full local stack in one command
+Write Makefile with targets: setup, start, stop, test, lint
+Verify Kafka topic creation and Redis ping work end to end
+Files: README.md, .gitignore, .env.example, requirements.txt, requirements-dev.txt, Makefile, infra/kafka_setup.sh, infra/redis_setup.sh, infra/start_all.sh
+
+
+Phase 1 — Event Ingestion & Kafka Pipeline
+
+Define event schema (user click/purchase events) in schemas.py
+Build Kafka producer that streams synthetic events in producer.py
+Build seed script to generate realistic historical event data in seed_events.py
+Verify producer → Kafka topic → consumer round-trip works
+Files: feature_store/ingestion/schemas.py, feature_store/ingestion/producer.py, feature_store/config.py, data/seeds/seed_events.py
+
+
+Phase 2 — Feature Computation Engine
+
+Build windowed aggregations (1min, 5min, 1hr counts, means, stds) in windowed_aggregations.py
+Build embedding feature extractor using sentence-transformers in embeddings.py
+Wire both into unified feature_pipeline.py that takes raw event → outputs feature vector
+Build the stream consumer that calls the pipeline per message in stream_consumer.py
+Files: feature_store/computation/windowed_aggregations.py, feature_store/computation/embeddings.py, feature_store/computation/feature_pipeline.py, consumer/stream_consumer.py
+
+
+Phase 3 — Online & Offline Feature Store
+
+Build Redis-backed online store with get/set/ttl in online_store.py
+Build SQLite-backed offline store for feature logging and point-in-time queries in offline_store.py
+Build feature registry to track feature names, versions, schemas in registry.py
+Wire consumer to write computed features to both stores
+Files: feature_store/storage/online_store.py, feature_store/storage/offline_store.py, feature_store/registry.py
+
+
+Phase 4 — Feature Serving API
+
+Build FastAPI app with endpoints: GET /features/{entity_id}, GET /features/batch, GET /features/schema, GET /health
+Low-latency reads from Redis online store
+Return feature vector with metadata (freshness, version)
+Files: feature_store/serving/api.py
+
+
+Phase 5 — Baseline Model & Training Distribution Snapshot
+
+Train a baseline scikit-learn model on seeded offline features
+Save training feature distribution statistics (mean, std, histogram bins) as snapshot
+Register model in MLflow local tracking
+Files: feature_store/retraining/trainer.py, feature_store/retraining/model_registry.py, data/snapshots/training_distribution.pkl, models/artifacts/
+
+
+Phase 6 — Drift Detection Engine
+
+Implement PSI (Population Stability Index) in metrics.py
+Implement KS test per feature in metrics.py
+Build detector.py that compares live feature distribution vs training snapshot
+Build snapshot.py to update reference distribution after retraining
+Build drift_scheduler.py to run drift checks every N minutes via APScheduler
+Files: feature_store/drift/metrics.py, feature_store/drift/detector.py, feature_store/drift/snapshot.py, scheduler/drift_scheduler.py
+
+
+Phase 7 — Auto-Retraining Pipeline
+
+Build trigger.py that fires retraining when drift score exceeds threshold
+Wire trainer.py to pull latest features from offline store, retrain, evaluate
+Implement zero-downtime hot-swap: new model validated before old model replaced
+Log retraining event (timestamp, trigger reason, metrics before/after) to SQLite
+Files: feature_store/retraining/trigger.py, updated feature_store/retraining/trainer.py, updated feature_store/retraining/model_registry.py
+
+
+Phase 8 — React Dashboard
+
+Scaffold Next.js app with Tailwind and ShadCN
+Build FeatureDistributionChart — live histogram per feature
+Build DriftScoreTimeline — PSI and KS scores over time
+Build ModelVersionTable — all MLflow-registered models with metrics
+Build RetrainingHistoryLog — timestamp, trigger, accuracy delta per retraining event
+Build SystemStatusBar — Kafka lag, Redis memory, API latency
+Files: all dashboard/ files
+
+
+Phase 9 — Tests, Docs & Final Polish
+
+Write pytest tests for feature computation, drift metrics, API endpoints, retraining trigger
+Write docs/architecture.md with system diagram description
+Write docs/drift_detection.md explaining PSI and KS math
+Write docs/api_reference.md with all endpoints
+Final README.md update with demo GIF instructions and full setup guide
+Files: all tests/ files, all docs/ files, final README.md
