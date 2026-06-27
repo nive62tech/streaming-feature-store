@@ -122,7 +122,7 @@ streaming-feature-store/
 | 2 | Feature Computation Engine | Windowed aggregations, embeddings, stream consumer | ✅ Complete |
 | 3 | Online & Offline Feature Store | Redis online store, SQLite offline store, feature registry | ✅ Complete |
 | 4 | Feature Serving API | FastAPI endpoints, low-latency Redis reads, health check | ✅ Complete |
-| 5 | Baseline Model & Distribution Snapshot | Baseline model training, MLflow registration, distribution snapshot | ⏳ Pending |
+| 5 | Baseline Model & Distribution Snapshot | Baseline model training, MLflow registration, distribution snapshot | ✅ Complete |
 | 6 | Drift Detection Engine | PSI + KS metrics, drift detector, APScheduler drift jobs | ⏳ Pending |
 | 7 | Auto-Retraining Pipeline | Drift trigger, retrain on fresh features, zero-downtime hot-swap | ⏳ Pending |
 | 8 | React Dashboard | Feature charts, drift timeline, model table, retraining log | ⏳ Pending |
