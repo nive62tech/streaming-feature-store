@@ -1,6 +1,8 @@
 import logging
 from datetime import datetime
 from typing import Optional, List, Dict, Any
+import pickle
+import os
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,6 +12,7 @@ from feature_store.storage.online_store import online_store
 from feature_store.storage.offline_store import offline_store
 from feature_store.registry import registry
 from feature_store.config import settings
+from feature_store.retraining.model_registry import model_registry
 
 logging.basicConfig(
     level=logging.INFO,
@@ -237,6 +240,20 @@ def get_retraining_history():
     history = offline_store.get_retraining_history()
     return {"count": len(history), "history": history}
 
+@app.get("/model/active", tags=["Model"])
+def get_active_model():
+    """Get the currently active model version and its metrics."""
+    active = model_registry.get_active()
+    if not active:
+        raise HTTPException(status_code=404, detail="No active model found. Run train_baseline.py first.")
+    return active
+
+
+@app.get("/model/versions", tags=["Model"])
+def get_model_versions():
+    """List all model versions registered in MLflow."""
+    runs = model_registry.get_all_runs()
+    return {"count": len(runs), "versions": runs}
 
 @app.get("/", tags=["System"])
 def root():
