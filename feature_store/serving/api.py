@@ -13,6 +13,8 @@ from feature_store.storage.offline_store import offline_store
 from feature_store.registry import registry
 from feature_store.config import settings
 from feature_store.retraining.model_registry import model_registry
+from feature_store.drift.detector import detector
+from feature_store.drift.snapshot import snapshot
 
 logging.basicConfig(
     level=logging.INFO,
@@ -254,6 +256,52 @@ def get_model_versions():
     """List all model versions registered in MLflow."""
     runs = model_registry.get_all_runs()
     return {"count": len(runs), "versions": runs}
+
+@app.get("/drift/latest", tags=["Drift"])
+def get_latest_drift():
+    """Get the most recent drift check report."""
+    report = detector.get_latest()
+    if not report:
+        raise HTTPException(
+            status_code=404,
+            detail="No drift reports found. Start the drift scheduler first."
+        )
+    return report
+
+
+@app.get("/drift/history", tags=["Drift"])
+def get_drift_history(limit: int = Query(default=20, ge=1, le=200)):
+    """Get recent drift check history — summary rows only."""
+    history = detector.get_history(limit=limit)
+    return {"count": len(history), "history": history}
+
+
+@app.post("/drift/check", tags=["Drift"])
+def trigger_drift_check(window_minutes: int = Query(default=60, ge=5, le=1440)):
+    """
+    Manually trigger a drift check on demand.
+    Useful for testing and the dashboard trigger button.
+    """
+    report = detector.run_check(window_minutes=window_minutes)
+    return report
+
+
+@app.get("/drift/snapshot", tags=["Drift"])
+def get_snapshot_info():
+    """Get metadata about the current reference distribution snapshot."""
+    if not snapshot.is_loaded():
+        raise HTTPException(
+            status_code=404,
+            detail="No snapshot loaded. Run scripts/train_baseline.py first."
+        )
+    features = snapshot.feature_names()
+    sample = snapshot.get_feature_stats(features[0]) if features else {}
+    return {
+        "loaded_at": snapshot.loaded_at,
+        "n_features": len(features),
+        "feature_names": features,
+        "sample_feature": {"name": features[0], "stats": sample} if features else {},
+    }
 
 @app.get("/", tags=["System"])
 def root():
