@@ -125,7 +125,7 @@ streaming-feature-store/
 | 5 | Baseline Model & Distribution Snapshot | Baseline model training, MLflow registration, distribution snapshot | ✅ Complete |
 | 6 | Drift Detection Engine | PSI + KS metrics, drift detector, APScheduler drift jobs | ✅ Complete |
 | 7 | Auto-Retraining Pipeline | Drift trigger, retrain on fresh features, zero-downtime hot-swap | ✅ Complete |
-| 8 | React Dashboard | Feature charts, drift timeline, model table, retraining log | ⏳ Pending |
+| 8 | React Dashboard | Feature charts, drift timeline, model table, retraining log | ✅ Complete |
 | 9 | Tests, Docs & Final Polish | pytest suite, architecture docs, API reference, final README | ⏳ Pending |
 
 Write-Host "Main README updated."
