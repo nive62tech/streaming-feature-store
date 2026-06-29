@@ -1,0 +1,4 @@
+1. Main working terminal — venv active
+2. ZooKeeper (.\infra\start-zookeeper.ps1)
+3. Kafka (.\infra\start-kafka.ps1)
+4. FastAPI (uvicorn feature_store.serving.api:app --host 0.0.0.0 --port 8000 --reload) -- $env:MLFLOW_ALLOW_FILE_STORE="true"
