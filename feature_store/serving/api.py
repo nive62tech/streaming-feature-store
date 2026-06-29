@@ -15,6 +15,7 @@ from feature_store.config import settings
 from feature_store.retraining.model_registry import model_registry
 from feature_store.drift.detector import detector
 from feature_store.drift.snapshot import snapshot
+from feature_store.retraining.trigger import trigger
 
 logging.basicConfig(
     level=logging.INFO,
@@ -301,6 +302,60 @@ def get_snapshot_info():
         "n_features": len(features),
         "feature_names": features,
         "sample_feature": {"name": features[0], "stats": sample} if features else {},
+    }
+
+@app.post("/retraining/trigger", tags=["Retraining"])
+def manual_retrain(
+    force: bool = Query(
+        default=False,
+        description="Force retraining even if drift threshold not met"
+    )
+):
+    """
+    Manually trigger the retraining pipeline.
+    Useful for testing and on-demand retraining from the dashboard.
+    """
+    if trigger.is_busy:
+        raise HTTPException(
+            status_code=409,
+            detail="Retraining already in progress. Try again later."
+        )
+
+    # Build a synthetic drift report to pass to the trigger
+    from feature_store.storage.offline_store import offline_store
+    n_samples = offline_store.count()
+
+    synthetic_report = {
+        "trigger_retraining": True,
+        "max_psi": settings.drift.PSI_THRESHOLD + 0.1 if force else 0.0,
+        "n_samples": n_samples,
+        "n_features_drifted": 0,
+        "checked_at": datetime.utcnow().isoformat(),
+        "reason": "manual_trigger",
+    }
+
+    if not force and n_samples < settings.retraining.MIN_SAMPLES:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Not enough samples for retraining: {n_samples} available, "
+                f"{settings.retraining.MIN_SAMPLES} required. "
+                f"Use force=true to override."
+            )
+        )
+
+    result = trigger.run(synthetic_report)
+    return result
+
+
+@app.get("/retraining/status", tags=["Retraining"])
+def get_retraining_status():
+    """Check if retraining is currently in progress."""
+    active = model_registry.get_active()
+    return {
+        "retraining_in_progress": trigger.is_busy,
+        "active_model": active,
+        "timestamp": datetime.utcnow().isoformat(),
     }
 
 @app.get("/", tags=["System"])

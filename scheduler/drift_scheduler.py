@@ -4,6 +4,7 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from feature_store.config import settings
 from feature_store.drift.detector import detector
+from feature_store.retraining.trigger import trigger
 
 logging.basicConfig(
     level=logging.INFO,
@@ -13,9 +14,18 @@ logger = logging.getLogger(__name__)
 
 
 def run_drift_check():
-    """Job executed by APScheduler every N minutes."""
-    logger.info(f"Scheduled drift check starting at {datetime.utcnow().isoformat()}")
+    """
+    Scheduled job:
+    1. Run drift check
+    2. If drift threshold exceeded — trigger retraining
+    3. Log everything
+    """
+    logger.info(
+        f"Scheduled drift check starting at {datetime.utcnow().isoformat()}"
+    )
+
     try:
+        # Step 1 — run drift check
         report = detector.run_check(window_minutes=60)
 
         if report.get("error"):
@@ -33,19 +43,31 @@ def run_drift_check():
             f"trigger_retraining={report['trigger_retraining']}"
         )
 
+        # Step 2 — trigger retraining if needed
         if report.get("trigger_retraining"):
             logger.warning(
-                f"DRIFT THRESHOLD EXCEEDED — "
-                f"max_psi={report['max_psi']:.4f} >= {settings.drift.PSI_THRESHOLD}. "
-                f"Retraining will be triggered in Phase 7."
+                f"DRIFT DETECTED — "
+                f"max_psi={report['max_psi']:.4f}. "
+                f"Starting retraining pipeline..."
             )
-            if report.get("drifted_features"):
-                logger.warning(
-                    f"Drifted features: {report['drifted_features'][:5]}"
+            result = trigger.run(report)
+
+            if result["status"] == "success":
+                logger.info(
+                    f"Retraining SUCCESS — "
+                    f"version={result['version']}, "
+                    f"accuracy={result['accuracy_after']:.4f} "
+                    f"(delta={result['accuracy_delta']:+.4f})"
                 )
+            elif result["status"] == "skipped":
+                logger.info(f"Retraining skipped: {result['reason']}")
+            elif result["status"] == "rejected":
+                logger.warning(f"Retraining rejected: {result['reason']}")
+            else:
+                logger.error(f"Retraining failed: {result.get('error')}")
 
     except Exception as e:
-        logger.error(f"Drift check failed with error: {e}", exc_info=True)
+        logger.error(f"Scheduled job failed: {e}", exc_info=True)
 
 
 def start_scheduler():
@@ -55,20 +77,20 @@ def start_scheduler():
         run_drift_check,
         trigger=IntervalTrigger(minutes=interval),
         id="drift_check",
-        name="Drift Detection Check",
+        name="Drift Detection + Auto Retraining",
         replace_existing=True,
     )
     logger.info(
-        f"Drift scheduler started — "
-        f"running every {interval} minutes."
+        f"Scheduler started — "
+        f"drift check + retraining every {interval} minutes."
     )
-    logger.info("Running initial drift check now...")
+    logger.info("Running initial check now...")
     run_drift_check()
 
     try:
         scheduler.start()
     except KeyboardInterrupt:
-        logger.info("Drift scheduler stopped by user.")
+        logger.info("Scheduler stopped.")
         scheduler.shutdown()
 
 
